@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Aplikasi berbagi story seputar Dicoding"
+    />
+    <title>Dicoding Story App</title>
+
+    <!-- Link ke manifest.json untuk PWA -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+    />
+
+    <link rel="stylesheet" href="/src/css/styles.css" />
+  </head>
+  <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <header>
+      <nav role="navigation" aria-label="Main navigation">
+        <div class="logo">📚 Dicoding Stories</div>
+        <div class="nav-links">
+          <a href="#login" class="nav-link" data-route="login" id="login-nav"
+            >Login</a
+          >
+          <a
+            href="#register"
+            class="nav-link"
+            data-route="register"
+            id="register-nav"
+            >Register</a
+          >
+          <a
+            href="#home"
+            class="nav-link auth-only"
+            data-route="home"
+            id="home-nav"
+            >Home</a
+          >
+          <a
+            href="#add-story"
+            class="nav-link auth-only"
+            data-route="add-story"
+            id="add-story-nav"
+            >Add Story</a
+          >
+          <button
+            id="logout-btn"
+            class="nav-link auth-only"
+            style="background: rgba(255, 255, 255, 0.1); border: none"
+          >
+            Logout
+          </button>
+        </div>
+      </nav>
+    </header>
+
+    <main id="main-content">
+      <!-- Login Page -->
+      <section
+        id="login"
+        class="page"
+        role="main"
+        aria-labelledby="login-title"
+      >
+        <div class="auth-container">
+          <h1 id="login-title">Login</h1>
+          <p>Masuk untuk mulai berbagi cerita</p>
+          <form id="login-form" role="form">
+            <div class="form-group">
+              <label for="login-email">Email</label>
+              <input type="email" id="login-email" name="email" required />
+            </div>
+            <div class="form-group">
+              <label for="login-password">Password</label>
+              <input
+                type="password"
+                id="login-password"
+                name="password"
+                required
+              />
+            </div>
+            <button type="submit">🔑 Login</button>
+          </form>
+          <p style="margin-top: 1rem; text-align: center">
+            Belum punya akun?
+            <a href="#register" data-route="register">Daftar di sini</a>
+          </p>
+        </div>
+      </section>
+
+      <!-- Register Page -->
+      <section
+        id="register"
+        class="page"
+        role="main"
+        aria-labelledby="register-title"
+      >
+        <div class="auth-container">
+          <h1 id="register-title">Register</h1>
+          <p>Buat akun untuk bergabung dengan komunitas</p>
+          <form id="register-form" role="form">
+            <div class="form-group">
+              <label for="register-name">Nama</label>
+              <input type="text" id="register-name" name="name" required />
+            </div>
+            <div class="form-group">
+              <label for="register-email">Email</label>
+              <input type="email" id="register-email" name="email" required />
+            </div>
+            <div class="form-group">
+              <label for="register-password">Password</label>
+              <input
+                type="password"
+                id="register-password"
+                name="password"
+                required
+                minlength="8"
+              />
+            </div>
+            <button type="submit">📝 Register</button>
+          </form>
+          <p style="margin-top: 1rem; text-align: center">
+            Sudah punya akun?
+            <a href="#login" data-route="login">Login di sini</a>
+          </p>
+        </div>
+      </section>
+
+      <!-- Home Page -->
+      <section
+        id="home"
+        class="page auth-required"
+        role="main"
+        aria-labelledby="home-title"
+      >
+        <h1 id="home-title">Dicoding Stories</h1>
+        <p>Berbagi cerita inspiratif</p>
+        <div id="map" role="img" aria-label="Peta lokasi cerita"></div>
+        <div id="loading" class="loading">
+          <p>Memuat cerita...</p>
+        </div>
+        <div
+          id="stories-container"
+          class="stories-grid"
+          role="feed"
+          aria-label="Daftar cerita"
+        ></div>
+      </section>
+
+      <!-- Add Story Page -->
+      <section
+        id="add-story"
+        class="page auth-required"
+        role="main"
+        aria-labelledby="add-story-title"
+      >
+        <div class="form-container">
+          <h1 id="add-story-title">Tambah Cerita Baru</h1>
+          <p>Bagikan cerita inspiratif kamu dengan komunitas Dicoding</p>
+          <form id="story-form" role="form" aria-labelledby="add-story-title">
+            <div class="form-group">
+              <label for="story-description">Deskripsi Cerita</label>
+              <textarea
+                id="story-description"
+                name="description"
+                rows="4"
+                required
+                placeholder="Ceritakan cerita mu di sini..."
+              ></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="story-photo">Foto Cerita</label>
+              <div class="camera-container">
+                <video
+                  id="video"
+                  autoplay
+                  muted
+                  aria-label="Camera preview"
+                ></video>
+                <canvas id="canvas"></canvas>
+                <div style="margin: 1rem 0">
+                  <button type="button" id="start-camera">
+                    📷 Buka Kamera
+                  </button>
+                  <button type="button" id="capture-photo" disabled>
+                    📸 Ambil Foto
+                  </button>
+                  <button type="button" id="stop-camera" disabled>
+                    ⏹️ Stop Kamera
+                  </button>
+                </div>
+                <img
+                  id="captured-image"
+                  class="captured-image"
+                  style="display: none"
+                  alt="Captured photo preview"
+                />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="location-input">Lokasi</label>
+              <input
+                type="text"
+                id="location-input"
+                readonly
+                placeholder="Klik pada peta untuk memilih lokasi"
+              />
+              <div
+                id="story-map"
+                style="height: 300px; border-radius: 10px; margin-top: 1rem"
+              ></div>
+            </div>
+
+            <button type="submit" id="submit-btn">🚀 Bagikan Cerita</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <script type="module" src="/src/js/app.js"></script>
+
+    <!-- Register Service Worker -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((registration) => {
+              console.log(
+                "Service Worker registered with scope:",
+                registration.scope
+              );
+            })
+            .catch((error) => {
+              console.log("Service Worker registration failed:", error);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
