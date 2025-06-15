@@ -2,10 +2,8 @@ const CACHE_NAME = "story-app-cache-v1";
 const urlsToCache = [
   "/",
   "/index.html",
-  "/styles.css",
-  "/app.js",
-  "/images/icon-192x192.png",
-  "/images/icon-512x512.png",
+  "/src/css/styles.css",
+  "/src/js/app.js",
   "/manifest.json",
 ];
 
