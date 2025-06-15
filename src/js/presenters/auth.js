@@ -59,7 +59,6 @@ export class AuthPresenter {
       this.updateAuthState(false);
       this.view.showSuccess("Logout berhasil!");
 
-      // Redirect to login after logout
       setTimeout(() => {
         this.router.navigateTo("login");
       }, 1000);
@@ -74,7 +73,6 @@ export class AuthPresenter {
     this.view.updateAuthState(isAuthenticated);
   }
 
-  // Method to check if user is authenticated
   isAuthenticated() {
     return this.model.isAuthenticated();
   }

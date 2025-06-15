@@ -16,14 +16,12 @@ export class StoryPresenter {
       this.view.initializeMap();
       this.view.updateMap(stories);
 
-      // Save to IndexedDB for offline access
       if (window.app) {
         await window.app.saveApiStoriesToIndexedDB(stories);
       }
     } catch (error) {
       this.view.showError("Gagal memuat cerita: " + error.message);
 
-      // Load offline stories if API fails
       if (window.app) {
         const offlineStories = await window.app.getAllStories();
         if (offlineStories.length > 0) {

@@ -21,7 +21,7 @@ class App {
       this.initPresenters();
       this.initRouter();
       this.initPushNotification();
-      this.initIndexedDB(); // Menambahkan IndexedDB untuk menyimpan data
+      this.initIndexedDB();
 
       console.log("App initialized successfully");
     } catch (error) {
@@ -108,7 +108,6 @@ class App {
           console.log("Entering add-story route");
           if (this.authPresenter.isAuthenticated()) {
             this.uiView.navigateTo("add-story");
-            // Initialize story map after navigation
             setTimeout(() => {
               this.storyView.initializeStoryMap();
             }, 100);
@@ -150,7 +149,6 @@ class App {
     }
   }
 
-  // Menambahkan IndexedDB untuk menyimpan dan mengambil data
   initIndexedDB() {
     this.db = null;
     const request = indexedDB.open("storyAppDatabase", 1);
@@ -162,7 +160,6 @@ class App {
     request.onsuccess = (event) => {
       this.db = event.target.result;
       console.log("Database opened successfully");
-      // Load offline stories when app starts
       this.loadOfflineStories();
     };
 
@@ -188,7 +185,6 @@ class App {
     const transaction = this.db.transaction(["stories"], "readwrite");
     const store = transaction.objectStore("stories");
 
-    // Hapus ID dari story object agar auto-increment bekerja
     const { id, ...storyData } = story;
 
     const request = store.add({
@@ -226,14 +222,13 @@ class App {
     });
   }
 
-  // Menghapus cerita dari IndexedDB
+  // Menghapus story dari IndexedDB
   async deleteStory(storyId) {
     if (!this.db) return;
 
     const transaction = this.db.transaction(["stories"], "readwrite");
     const store = transaction.objectStore("stories");
 
-    // Convert to number jika string
     const id = typeof storyId === "string" ? parseInt(storyId) : storyId;
 
     const request = store.delete(id);
@@ -271,7 +266,6 @@ class App {
     }
   }
 
-  // Push Notification - Menangani push notification
   initPushNotification() {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       navigator.serviceWorker

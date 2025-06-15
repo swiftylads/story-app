@@ -17,7 +17,6 @@ export class UIView {
 
     this.navigateWithTransition(() => {
       try {
-        // Hide all pages
         this.pages.forEach((page) => {
           page.classList.remove("active");
         });

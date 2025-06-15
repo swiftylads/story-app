@@ -144,12 +144,10 @@ export class StoryView {
         4
       )}, ${e.latlng.lng.toFixed(4)}`;
 
-      // Clear existing markers
       if (this.storyMarker) {
         this.storyMap.removeLayer(this.storyMarker);
       }
 
-      // Add new marker
       this.storyMarker = L.marker([e.latlng.lat, e.latlng.lng])
         .addTo(this.storyMap)
         .bindPopup("Lokasi cerita Anda")
@@ -212,7 +210,6 @@ export class StoryView {
   displayOfflineStories(stories) {
     if (!this.storiesContainer) return;
 
-    // Add offline indicator
     const offlineIndicator = document.createElement("div");
     offlineIndicator.className = "offline-indicator";
     offlineIndicator.innerHTML = `
@@ -255,7 +252,6 @@ export class StoryView {
       this.storiesContainer.appendChild(storyElement);
     });
 
-    // Bind delete buttons
     this.bindDeleteButtons();
   }
 
@@ -266,7 +262,6 @@ export class StoryView {
         const storyId = parseInt(e.target.dataset.id);
         if (confirm("Hapus cerita ini?")) {
           try {
-            // Access app instance to delete story
             await window.app.deleteStory(storyId);
             e.target.closest(".story-card").remove();
             this.showSuccess("Cerita berhasil dihapus!");
@@ -294,14 +289,12 @@ export class StoryView {
   updateMap(stories) {
     if (!this.map) return;
 
-    // Clear existing markers
     if (this.markers) {
       this.markers.forEach((marker) => this.map.removeLayer(marker));
     }
 
     this.markers = [];
 
-    // Add new markers
     stories
       .filter((story) => story.lat && story.lon)
       .forEach((story) => {
@@ -311,7 +304,6 @@ export class StoryView {
         this.markers.push(marker);
       });
 
-    // Fit bounds if there are markers
     if (this.markers.length > 0) {
       const group = new L.featureGroup(this.markers);
       this.map.fitBounds(group.getBounds().pad(0.1));

@@ -12,7 +12,6 @@
     <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
 
-    <!-- Link ke manifest.json untuk PWA -->
     <link rel="manifest" href="/manifest.json" />
 
     <link
@@ -237,7 +236,7 @@
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
           navigator.serviceWorker
-            .register("/sw.js")
+            .register("./sw.js")
             .then((registration) => {
               console.log(
                 "✅ Service Worker registered successfully:",

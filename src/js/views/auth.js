@@ -169,7 +169,6 @@ export class AuthView {
     setTimeout(() => successDiv.remove(), 5000);
   }
 
-  // Helper method to clear existing messages
   clearMessages() {
     const existingError = document.querySelector(".error");
     const existingSuccess = document.querySelector(".success");
