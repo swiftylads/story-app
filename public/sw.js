@@ -1,10 +1,10 @@
 const CACHE_NAME = "story-app-cache-v1";
 const urlsToCache = [
-  "./",
-  "./index.html",
-  "./src/css/styles.css",
-  "./src/js/app.js",
-  "./manifest.json",
+  "/",
+  "/index.html",
+  "/src/css/styles.css",
+  "/src/js/app.js",
+  "/manifest.json",
 ];
 
 self.addEventListener("install", (event) => {

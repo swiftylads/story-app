@@ -269,7 +269,7 @@ class App {
   initPushNotification() {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       navigator.serviceWorker
-        .register("./sw.js")
+        .register("/sw.js")
         .then(function (registration) {
           console.log(
             "Service Worker berhasil didaftarkan dengan scope:",
