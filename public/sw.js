@@ -26,22 +26,34 @@ self.addEventListener("install", (event) => {
       .open(CACHE_NAME)
       .then((cache) => {
         console.log("Opened cache");
-        // Cache files one by one to avoid failures
-        return Promise.allSettled(
-          urlsToCache.map((url) => {
-            return cache.add(url).catch((err) => {
-              console.warn(`Failed to cache ${url}:`, err);
+        // Cache critical files first (CSS)
+        const criticalFiles = [
+          "/src/css/styles.css",
+          "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
+        ];
+
+        // Cache critical files dengan error handling
+        return Promise.all(
+          criticalFiles.map((url) =>
+            cache.add(url).catch((err) => {
+              console.warn(`Critical file failed to cache ${url}:`, err);
+              // Jangan fail install jika CSS gagal
               return null;
-            });
-          })
-        );
+            })
+          )
+        ).then(() => {
+          // Cache remaining files
+          const remainingFiles = urlsToCache.filter(
+            (url) => !criticalFiles.includes(url)
+          );
+          return Promise.allSettled(
+            remainingFiles.map((url) => cache.add(url).catch((err) => null))
+          );
+        });
       })
       .then(() => {
-        console.log("All files cached successfully");
+        console.log("Cache installation completed");
         return self.skipWaiting();
-      })
-      .catch((error) => {
-        console.error("Cache installation failed:", error);
       })
   );
 });
@@ -71,76 +83,137 @@ self.addEventListener("activate", (event) => {
 
 // Fetch event
 self.addEventListener("fetch", (event) => {
-  if (
-    !event.request.url.startsWith(self.location.origin) &&
-    !event.request.url.startsWith("https://cdnjs.cloudflare.com")
-  ) {
+  // Skip non-GET requests
+  if (event.request.method !== "GET") return;
+
+  // Handle CSS files with special strategy
+  if (event.request.url.includes(".css")) {
+    event.respondWith(
+      caches.match(event.request).then((response) => {
+        if (response) {
+          // Serve from cache but update in background
+          fetch(event.request)
+            .then((fetchResponse) => {
+              if (fetchResponse && fetchResponse.status === 200) {
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(event.request, fetchResponse.clone());
+                });
+              }
+            })
+            .catch(() => {}); // Silent fail for background update
+
+          return response;
+        }
+
+        // Not in cache, fetch from network
+        return fetch(event.request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              const responseToCache = response.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseToCache);
+              });
+            }
+            return response;
+          })
+          .catch(() => {
+            // Return basic CSS fallback for critical styling
+            if (event.request.url.includes("styles.css")) {
+              return new Response(
+                `
+                  body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+                  .page { display: none; }
+                  .page.active { display: block; }
+                  .loading { text-align: center; padding: 20px; }
+                `,
+                {
+                  headers: { "Content-Type": "text/css" },
+                }
+              );
+            }
+            throw new Error("CSS not available");
+          });
+      })
+    );
     return;
   }
 
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Return cached version or fetch from network
-      if (response) {
-        return response;
-      }
-
-      return fetch(event.request)
-        .then((response) => {
-          // Check if we received a valid response
-          if (
-            !response ||
-            response.status !== 200 ||
-            response.type !== "basic"
-          ) {
-            return response;
-          }
-
-          // Clone the response
-          const responseToCache = response.clone();
-
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-
-          return response;
-        })
-        .catch(() => {
-          // If both cache and network fail, return offline page
-          if (event.request.destination === "document") {
-            return caches.match("/index.html");
-          }
-        });
-    })
-  );
+  // Regular fetch handling untuk file lainnya
+  if (
+    event.request.url.startsWith(self.location.origin) ||
+    event.request.url.startsWith("https://cdnjs.cloudflare.com")
+  ) {
+    event.respondWith(
+      caches.match(event.request).then((response) => {
+        return (
+          response ||
+          fetch(event.request)
+            .then((response) => {
+              if (
+                response &&
+                response.status === 200 &&
+                response.type === "basic"
+              ) {
+                const responseToCache = response.clone();
+                caches.open(CACHE_NAME).then((cache) => {
+                  cache.put(event.request, responseToCache);
+                });
+              }
+              return response;
+            })
+            .catch(() => {
+              if (event.request.destination === "document") {
+                return caches.match("/index.html");
+              }
+            })
+        );
+      })
+    );
+  }
 });
 
+// Push notification event
 // Push notification event
 self.addEventListener("push", (event) => {
   console.log("Push notification received:", event);
 
-  const options = {
-    body: event.data
-      ? event.data.text()
-      : "Ada cerita baru di Dicoding Stories!",
-    icon: "/manifest.json",
-    badge: "/manifest.json",
+  let notificationData = {
+    title: "Dicoding Stories",
+    body: "Ada update baru di Dicoding Stories!",
+    icon: "/favicon.ico",
+    badge: "/favicon.ico",
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
       primaryKey: 1,
+      url: "/#home",
     },
   };
 
+  // Parse data dari server
+  if (event.data) {
+    try {
+      const pushData = event.data.json();
+      notificationData = {
+        title: pushData.title || "Dicoding Stories",
+        body: pushData.options?.body || notificationData.body,
+        icon: notificationData.icon,
+        badge: notificationData.badge,
+        vibrate: notificationData.vibrate,
+        data: notificationData.data,
+      };
+    } catch (e) {
+      notificationData.body = event.data.text();
+    }
+  }
+
   event.waitUntil(
-    self.registration.showNotification("Dicoding Stories", options)
+    self.registration.showNotification(notificationData.title, {
+      body: notificationData.body,
+      icon: notificationData.icon,
+      badge: notificationData.badge,
+      vibrate: notificationData.vibrate,
+      data: notificationData.data,
+    })
   );
-});
-
-// Notification click event
-self.addEventListener("notificationclick", (event) => {
-  console.log("Notification clicked:", event);
-  event.notification.close();
-
-  event.waitUntil(clients.openWindow("/"));
 });

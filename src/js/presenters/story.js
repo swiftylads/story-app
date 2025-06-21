@@ -37,6 +37,9 @@ export class StoryPresenter {
     try {
       await this.model.addStory(description, photo, lat, lon);
       this.view.showSuccess("Cerita berhasil ditambahkan!");
+
+      // Push notification akan datang dari server otomatis
+
       setTimeout(() => this.router.navigateTo("home"), 2000);
     } catch (error) {
       this.view.showError("Gagal menambahkan cerita: " + error.message);

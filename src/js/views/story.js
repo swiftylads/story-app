@@ -20,6 +20,27 @@ export class StoryView {
     this.stream = null;
   }
 
+  // Method untuk membersihkan kamera saat pindah halaman
+  cleanupCamera() {
+    if (this.stream) {
+      this.stream.getTracks().forEach((track) => track.stop());
+      this.stream = null;
+    }
+
+    if (this.video) {
+      this.video.srcObject = null;
+      this.video.style.display = "none";
+    }
+
+    if (this.canvas) {
+      this.canvas.style.display = "none";
+    }
+
+    if (this.startCameraBtn) this.startCameraBtn.disabled = false;
+    if (this.capturePhotoBtn) this.capturePhotoBtn.disabled = true;
+    if (this.stopCameraBtn) this.stopCameraBtn.disabled = true;
+  }
+
   bindAddStory(handler) {
     if (!this.storyForm) return;
 
@@ -63,6 +84,7 @@ export class StoryView {
         this.capturedImage.style.display = "none";
         this.selectedLocation = null;
         this.locationInput.value = "";
+        this.cleanupCamera(); // Bersihkan kamera setelah submit
       } catch (error) {
         this.showError(error.message);
       } finally {
@@ -112,18 +134,7 @@ export class StoryView {
   }
 
   stopCamera() {
-    if (this.stream) {
-      this.stream.getTracks().forEach((track) => track.stop());
-      this.stream = null;
-    }
-
-    this.video.srcObject = null;
-    this.video.style.display = "none";
-    this.canvas.style.display = "none";
-
-    this.startCameraBtn.disabled = false;
-    this.capturePhotoBtn.disabled = true;
-    this.stopCameraBtn.disabled = true;
+    this.cleanupCamera();
   }
 
   initializeStoryMap() {
@@ -192,7 +203,7 @@ export class StoryView {
       }" loading="lazy">
             </div>
             <div class="story-content">
-                <h4>${story.name}</h4>
+                <h3>${story.name}</h3>
                 <p>${story.description}</p>
                 ${
                   story.lat && story.lon
@@ -213,7 +224,7 @@ export class StoryView {
     const offlineIndicator = document.createElement("div");
     offlineIndicator.className = "offline-indicator";
     offlineIndicator.innerHTML = `
-      <h3>📱 Stories Offline</h3>
+      <h2>📱 Stories Offline</h2>
       <p>Menampilkan cerita yang tersimpan di perangkat</p>
     `;
     offlineIndicator.style.cssText = `
@@ -233,7 +244,7 @@ export class StoryView {
       storyElement.className = "story-card offline-story";
       storyElement.innerHTML = `
         <div class="story-content">
-          <h4>${story.name || "Anonymous"}</h4>
+          <h3>${story.name || "Anonymous"}</h3>
           <p>${story.description}</p>
           <small>Tersimpan offline: ${new Date(story.timestamp).toLocaleString(
             "id-ID"
@@ -360,6 +371,6 @@ export class StoryView {
     const existingError = document.querySelector(".error");
     const existingSuccess = document.querySelector(".success");
     if (existingError) existingError.remove();
-    if (existingSuccess) existingSuccess.remove();
+    if (existingSuccess) successDiv.remove();
   }
 }

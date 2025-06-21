@@ -55,6 +55,11 @@ export class AuthPresenter {
 
   handleLogout() {
     try {
+      // Unsubscribe dari notifications sebelum logout
+      if (window.app) {
+        window.app.unsubscribeFromNotifications();
+      }
+
       this.model.logout();
       this.updateAuthState(false);
       this.view.showSuccess("Logout berhasil!");

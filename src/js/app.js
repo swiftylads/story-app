@@ -57,7 +57,6 @@ class App {
       this.authView,
       tempRouter
     );
-
     this.storyPresenter = new StoryPresenter(
       this.storyModel,
       this.storyView,
@@ -70,6 +69,7 @@ class App {
       login: {
         enter: () => {
           console.log("Entering login route");
+          this.storyView.cleanupCamera();
           this.uiView.navigateTo("login");
         },
         leave: () => {
@@ -79,6 +79,7 @@ class App {
       register: {
         enter: () => {
           console.log("Entering register route");
+          this.storyView.cleanupCamera();
           this.uiView.navigateTo("register");
         },
         leave: () => {
@@ -89,6 +90,7 @@ class App {
         enter: () => {
           console.log("Entering home route");
           if (this.authPresenter.isAuthenticated()) {
+            this.storyView.cleanupCamera();
             this.uiView.navigateTo("home");
 
             setTimeout(() => {
@@ -118,11 +120,13 @@ class App {
         },
         leave: () => {
           console.log("Leaving add-story route");
+          this.storyView.cleanupCamera();
         },
       },
       404: {
         enter: () => {
           console.log("Entering 404 route");
+          this.storyView.cleanupCamera();
           const defaultRoute = this.authPresenter.isAuthenticated()
             ? "home"
             : "login";
@@ -178,13 +182,11 @@ class App {
     };
   }
 
-  // Menyimpan cerita ke IndexedDB
   async saveStory(story) {
     if (!this.db) return;
 
     const transaction = this.db.transaction(["stories"], "readwrite");
     const store = transaction.objectStore("stories");
-
     const { id, ...storyData } = story;
 
     const request = store.add({
@@ -204,7 +206,6 @@ class App {
     });
   }
 
-  // Mengambil semua cerita dari IndexedDB
   async getAllStories() {
     if (!this.db) return [];
 
@@ -222,13 +223,11 @@ class App {
     });
   }
 
-  // Menghapus story dari IndexedDB
   async deleteStory(storyId) {
     if (!this.db) return;
 
     const transaction = this.db.transaction(["stories"], "readwrite");
     const store = transaction.objectStore("stories");
-
     const id = typeof storyId === "string" ? parseInt(storyId) : storyId;
 
     const request = store.delete(id);
@@ -266,44 +265,101 @@ class App {
     }
   }
 
-  initPushNotification() {
+  async initPushNotification() {
     if ("serviceWorker" in navigator && "PushManager" in window) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then(function (registration) {
-          console.log(
-            "Service Worker berhasil didaftarkan dengan scope:",
-            registration.scope
-          );
-          return Notification.requestPermission();
-        })
-        .then(function (permission) {
-          if (permission === "granted") {
-            navigator.serviceWorker.ready
-              .then(function (registration) {
-                return registration.pushManager.subscribe({
-                  userVisibleOnly: true,
-                  applicationServerKey:
-                    "BCCs2eonMI-6H2ctvFaWg-UYdDv387Vno_bzUzALpB442r2lCnsHmtrx8biyPi_E-1fSGABK_Qs_GlvPoJJqxbk",
-                });
-              })
-              .then(function (subscription) {
-                console.log(
-                  "Berhasil subscribe ke push notifications:",
-                  subscription
-                );
-              });
-          } else {
-            console.log("Pengguna menolak izin untuk push notifications");
-          }
-        })
-        .catch(function (error) {
-          console.error(
-            "Terjadi kesalahan saat mendaftarkan service worker atau push subscription:",
-            error
-          );
-        });
+      try {
+        const registration = await navigator.serviceWorker.register("/sw.js");
+        console.log("Service Worker berhasil didaftarkan:", registration.scope);
+
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+          const swRegistration = await navigator.serviceWorker.ready;
+          const subscription = await swRegistration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey:
+              "BCCs2eonMI-6H2ctvFaWg-UYdDv387Vno_bzUzALpB442r2lCnsHmtrx8biyPi_E-1fSGABK_Qs_GlvPoJJqxbk",
+          });
+
+          console.log("Push subscription berhasil:", subscription);
+          await this.sendSubscriptionToServer(subscription);
+          this.scheduleTestNotification();
+        }
+      } catch (error) {
+        console.error("Error dalam push notification setup:", error);
+      }
     }
+  }
+
+  async sendSubscriptionToServer(subscription) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications/subscribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.authModel.token}`,
+        },
+        body: JSON.stringify({
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: subscription.keys.p256dh,
+            auth: subscription.keys.auth,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        console.log("Subscription berhasil dikirim ke server");
+      }
+    } catch (error) {
+      console.log("Gagal mengirim subscription ke server:", error);
+    }
+  }
+
+  async unsubscribeFromNotifications() {
+    if ("serviceWorker" in navigator && "PushManager" in window) {
+      try {
+        const swRegistration = await navigator.serviceWorker.ready;
+        const subscription = await swRegistration.pushManager.getSubscription();
+
+        if (subscription) {
+          // Unsubscribe dari server
+          await fetch(`${API_BASE_URL}/notifications/subscribe`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${this.authModel.token}`,
+            },
+            body: JSON.stringify({
+              endpoint: subscription.endpoint,
+            }),
+          });
+
+          // Unsubscribe dari browser
+          await subscription.unsubscribe();
+          console.log("Successfully unsubscribed from notifications");
+        }
+      } catch (error) {
+        console.error("Error unsubscribing from notifications:", error);
+      }
+    }
+  }
+
+  scheduleTestNotification() {
+    setTimeout(() => {
+      if (Notification.permission === "granted") {
+        navigator.serviceWorker.ready.then((registration) => {
+          registration.showNotification("Dicoding Stories", {
+            body: "Selamat datang! Push notification berhasil diaktifkan.",
+            icon: "/favicon.ico",
+            badge: "/favicon.ico",
+            vibrate: [100, 50, 100],
+            data: {
+              url: "/#home",
+            },
+          });
+        });
+      }
+    }, 10000);
   }
 }
 
