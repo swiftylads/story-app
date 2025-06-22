@@ -20,8 +20,11 @@ class App {
       this.initViews();
       this.initPresenters();
       this.initRouter();
-      this.initPushNotification();
       this.initIndexedDB();
+
+      if (this.authModel.isAuthenticated()) {
+        await this.initPushNotification();
+      }
 
       console.log("App initialized successfully");
     } catch (error) {
@@ -268,12 +271,19 @@ class App {
   async initPushNotification() {
     if ("serviceWorker" in navigator && "PushManager" in window) {
       try {
+        // Register service worker
         const registration = await navigator.serviceWorker.register("/sw.js");
         console.log("Service Worker berhasil didaftarkan:", registration.scope);
 
+        // Request notification permission
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
+          console.log("Notification permission granted");
+
+          // Wait for service worker to be ready
           const swRegistration = await navigator.serviceWorker.ready;
+
+          // Subscribe to push notifications
           const subscription = await swRegistration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey:
@@ -281,37 +291,61 @@ class App {
           });
 
           console.log("Push subscription berhasil:", subscription);
+
+          // Send subscription to server
           await this.sendSubscriptionToServer(subscription);
-          this.scheduleTestNotification();
+
+          // Remove local test notification since we want to use server notifications
+          console.log(
+            "Push notification setup completed - waiting for server notifications"
+          );
+        } else {
+          console.log("Notification permission denied");
         }
       } catch (error) {
         console.error("Error dalam push notification setup:", error);
       }
+    } else {
+      console.log("Push notifications tidak didukung di browser ini");
     }
   }
 
   async sendSubscriptionToServer(subscription) {
     try {
+      // Convert subscription keys to base64 strings
+      const subscriptionData = {
+        endpoint: subscription.endpoint,
+        keys: {
+          p256dh: this.arrayBufferToBase64(subscription.getKey("p256dh")),
+          auth: this.arrayBufferToBase64(subscription.getKey("auth")),
+        },
+      };
+
+      console.log("Sending subscription to server:", subscriptionData);
+
       const response = await fetch(`${API_BASE_URL}/notifications/subscribe`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.authModel.token}`,
         },
-        body: JSON.stringify({
-          endpoint: subscription.endpoint,
-          keys: {
-            p256dh: subscription.keys.p256dh,
-            auth: subscription.keys.auth,
-          },
-        }),
+        body: JSON.stringify(subscriptionData),
       });
 
+      const result = await response.json();
+
       if (response.ok) {
-        console.log("Subscription berhasil dikirim ke server");
+        console.log("Subscription berhasil dikirim ke server:", result);
+
+        // Store subscription ID for potential future use
+        localStorage.setItem("pushSubscriptionId", result.data.id);
+      } else {
+        console.error("Gagal mengirim subscription ke server:", result);
+        throw new Error(result.message || "Failed to subscribe");
       }
     } catch (error) {
-      console.log("Gagal mengirim subscription ke server:", error);
+      console.error("Error mengirim subscription ke server:", error);
+      throw error;
     }
   }
 
@@ -322,26 +356,53 @@ class App {
         const subscription = await swRegistration.pushManager.getSubscription();
 
         if (subscription) {
-          // Unsubscribe dari server
-          await fetch(`${API_BASE_URL}/notifications/subscribe`, {
-            method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${this.authModel.token}`,
-            },
-            body: JSON.stringify({
-              endpoint: subscription.endpoint,
-            }),
-          });
+          console.log("Unsubscribing from notifications...");
 
-          // Unsubscribe dari browser
+          // Unsubscribe from server first
+          const response = await fetch(
+            `${API_BASE_URL}/notifications/subscribe`,
+            {
+              method: "DELETE",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${this.authModel.token}`,
+              },
+              body: JSON.stringify({
+                endpoint: subscription.endpoint,
+              }),
+            }
+          );
+
+          if (response.ok) {
+            console.log("Successfully unsubscribed from server");
+          } else {
+            const error = await response.json();
+            console.error("Server unsubscribe error:", error);
+          }
+
+          // Unsubscribe from browser
           await subscription.unsubscribe();
-          console.log("Successfully unsubscribed from notifications");
+          console.log("Successfully unsubscribed from browser");
+
+          // Clear stored subscription ID
+          localStorage.removeItem("pushSubscriptionId");
+        } else {
+          console.log("No active subscription found");
         }
       } catch (error) {
         console.error("Error unsubscribing from notifications:", error);
       }
     }
+  }
+
+  // Helper method to convert ArrayBuffer to base64
+  arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
   }
 
   scheduleTestNotification() {

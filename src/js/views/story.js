@@ -20,7 +20,6 @@ export class StoryView {
     this.stream = null;
   }
 
-  // Method untuk membersihkan kamera saat pindah halaman
   cleanupCamera() {
     if (this.stream) {
       this.stream.getTracks().forEach((track) => track.stop());
@@ -84,7 +83,7 @@ export class StoryView {
         this.capturedImage.style.display = "none";
         this.selectedLocation = null;
         this.locationInput.value = "";
-        this.cleanupCamera(); // Bersihkan kamera setelah submit
+        this.cleanupCamera();
       } catch (error) {
         this.showError(error.message);
       } finally {

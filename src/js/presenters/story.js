@@ -20,8 +20,10 @@ export class StoryPresenter {
         await window.app.saveApiStoriesToIndexedDB(stories);
       }
     } catch (error) {
+      console.error("Error loading stories:", error);
       this.view.showError("Gagal memuat cerita: " + error.message);
 
+      // Show offline stories if available
       if (window.app) {
         const offlineStories = await window.app.getAllStories();
         if (offlineStories.length > 0) {
@@ -35,13 +37,20 @@ export class StoryPresenter {
 
   async handleAddStory(description, photo, lat, lon) {
     try {
-      await this.model.addStory(description, photo, lat, lon);
+      console.log("Adding story with data:", { description, lat, lon });
+
+      const result = await this.model.addStory(description, photo, lat, lon);
+
+      console.log("Story added successfully:", result);
       this.view.showSuccess("Cerita berhasil ditambahkan!");
 
-      // Push notification akan datang dari server otomatis
+      console.log("Waiting for server push notification...");
 
-      setTimeout(() => this.router.navigateTo("home"), 2000);
+      setTimeout(() => {
+        this.router.navigateTo("home");
+      }, 2000);
     } catch (error) {
+      console.error("Error adding story:", error);
       this.view.showError("Gagal menambahkan cerita: " + error.message);
     }
   }

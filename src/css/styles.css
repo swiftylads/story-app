@@ -1,8 +1,11 @@
-/* Reset & Base Styles */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
@@ -104,12 +107,14 @@ main {
   margin: 0 auto;
   padding: 2rem;
   min-height: calc(100vh - 120px);
+  padding-top: 0;
 }
 
 /* Page Transitions */
 .page {
   display: none;
   animation: fadeIn 0.5s ease-in-out;
+  padding-top: 2rem;
 }
 
 .page.active {
@@ -247,12 +252,11 @@ button[type="submit"]:disabled,
   min-width: 120px;
 }
 
-/* Form Container */
 .form-container {
-  max-width: 600px;
+  max-width: 900px;
   margin: 0 auto;
   background: rgba(255, 255, 255, 0.95);
-  padding: 2rem;
+  padding: 2.5rem;
   border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
@@ -262,18 +266,30 @@ button[type="submit"]:disabled,
   text-align: center;
   margin-bottom: 0.5rem;
   color: #333;
+  font-size: 2.2rem;
 }
 
 .form-container p {
   text-align: center;
   margin-bottom: 2rem;
   color: #666;
+  font-size: 1.1rem;
 }
 
 .form-container h2 {
   color: #333;
   margin-bottom: 1rem;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
+}
+
+.form-container .form-group input,
+.form-container .form-group textarea {
+  font-size: 1.1rem;
+  padding: 1rem;
+}
+
+.form-container .form-group textarea {
+  min-height: 150px;
 }
 
 /* Stories Grid */
@@ -374,7 +390,7 @@ button[type="submit"]:disabled,
 }
 
 #story-map {
-  height: 300px;
+  height: 400px;
   margin-top: 1rem;
 }
 
@@ -466,11 +482,24 @@ footer {
   .form-container {
     margin: 1rem;
     padding: 1.5rem;
+    max-width: none;
+  }
+
+  .form-container h1 {
+    font-size: 1.8rem;
+  }
+
+  .form-container h2 {
+    font-size: 1.2rem;
   }
 
   .camera-container button {
     width: 100%;
     margin: 0.25rem 0;
+  }
+
+  #story-map {
+    height: 250px;
   }
 }
 
@@ -487,5 +516,28 @@ footer {
   .auth-container h1,
   .form-container h1 {
     font-size: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .form-container {
+    max-width: 1000px;
+    padding: 3rem;
+  }
+
+  .form-container h1 {
+    font-size: 2.5rem;
+  }
+
+  .form-container .form-group {
+    margin-bottom: 2rem;
+  }
+
+  #story-map {
+    height: 450px;
+  }
+
+  .camera-container #video {
+    max-width: 500px;
   }
 }

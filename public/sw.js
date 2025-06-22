@@ -1,4 +1,4 @@
-const CACHE_NAME = "dicoding-story-v1";
+const CACHE_NAME = "dicoding-story-v2";
 const urlsToCache = [
   "/",
   "/index.html",
@@ -26,23 +26,20 @@ self.addEventListener("install", (event) => {
       .open(CACHE_NAME)
       .then((cache) => {
         console.log("Opened cache");
-        // Cache critical files first (CSS)
+
         const criticalFiles = [
           "/src/css/styles.css",
           "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css",
         ];
 
-        // Cache critical files dengan error handling
         return Promise.all(
           criticalFiles.map((url) =>
             cache.add(url).catch((err) => {
               console.warn(`Critical file failed to cache ${url}:`, err);
-              // Jangan fail install jika CSS gagal
               return null;
             })
           )
         ).then(() => {
-          // Cache remaining files
           const remainingFiles = urlsToCache.filter(
             (url) => !criticalFiles.includes(url)
           );
@@ -83,15 +80,12 @@ self.addEventListener("activate", (event) => {
 
 // Fetch event
 self.addEventListener("fetch", (event) => {
-  // Skip non-GET requests
   if (event.request.method !== "GET") return;
 
-  // Handle CSS files with special strategy
   if (event.request.url.includes(".css")) {
     event.respondWith(
       caches.match(event.request).then((response) => {
         if (response) {
-          // Serve from cache but update in background
           fetch(event.request)
             .then((fetchResponse) => {
               if (fetchResponse && fetchResponse.status === 200) {
@@ -100,12 +94,11 @@ self.addEventListener("fetch", (event) => {
                 });
               }
             })
-            .catch(() => {}); // Silent fail for background update
+            .catch(() => {});
 
           return response;
         }
 
-        // Not in cache, fetch from network
         return fetch(event.request)
           .then((response) => {
             if (response && response.status === 200) {
@@ -117,7 +110,6 @@ self.addEventListener("fetch", (event) => {
             return response;
           })
           .catch(() => {
-            // Return basic CSS fallback for critical styling
             if (event.request.url.includes("styles.css")) {
               return new Response(
                 `
@@ -138,7 +130,6 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Regular fetch handling untuk file lainnya
   if (
     event.request.url.startsWith(self.location.origin) ||
     event.request.url.startsWith("https://cdnjs.cloudflare.com")
@@ -172,10 +163,8 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
-// Push notification event
-// Push notification event
 self.addEventListener("push", (event) => {
-  console.log("Push notification received:", event);
+  console.log("Push notification received from server:", event);
 
   let notificationData = {
     title: "Dicoding Stories",
@@ -188,25 +177,44 @@ self.addEventListener("push", (event) => {
       primaryKey: 1,
       url: "/#home",
     },
+    actions: [
+      {
+        action: "open",
+        title: "Buka App",
+        icon: "/favicon.ico",
+      },
+    ],
   };
 
-  // Parse data dari server
   if (event.data) {
     try {
       const pushData = event.data.json();
+      console.log("Received push data:", pushData);
+
       notificationData = {
         title: pushData.title || "Dicoding Stories",
         body: pushData.options?.body || notificationData.body,
         icon: notificationData.icon,
         badge: notificationData.badge,
         vibrate: notificationData.vibrate,
-        data: notificationData.data,
+        data: {
+          ...notificationData.data,
+          ...pushData.data,
+        },
+        actions: notificationData.actions,
       };
     } catch (e) {
-      notificationData.body = event.data.text();
+      console.error("Error parsing push data:", e);
+
+      try {
+        notificationData.body = event.data.text();
+      } catch (textError) {
+        console.error("Error getting text from push data:", textError);
+      }
     }
   }
 
+  // Show the notification
   event.waitUntil(
     self.registration.showNotification(notificationData.title, {
       body: notificationData.body,
@@ -214,6 +222,48 @@ self.addEventListener("push", (event) => {
       badge: notificationData.badge,
       vibrate: notificationData.vibrate,
       data: notificationData.data,
+      actions: notificationData.actions,
+      requireInteraction: true,
+      tag: "dicoding-story",
     })
   );
+});
+
+// Handle notification click
+self.addEventListener("notificationclick", (event) => {
+  console.log("Notification clicked:", event);
+
+  event.notification.close();
+
+  // Handle action clicks
+  if (event.action === "open" || !event.action) {
+    const url = event.notification.data?.url || "/#home";
+
+    event.waitUntil(
+      clients
+        .matchAll({ type: "window", includeUncontrolled: true })
+        .then((clientList) => {
+          for (const client of clientList) {
+            if (client.url.includes(self.location.origin)) {
+              client.focus();
+              client.postMessage({
+                type: "NAVIGATE",
+                url: url,
+              });
+              return;
+            }
+          }
+
+          return clients.openWindow(url);
+        })
+    );
+  }
+});
+
+self.addEventListener("message", (event) => {
+  console.log("Service Worker received message:", event.data);
+
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });

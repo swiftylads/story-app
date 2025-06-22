@@ -5,7 +5,6 @@ export class AuthPresenter {
     this.router = router;
 
     this.updateAuthState();
-
     this.bindEvents();
   }
 
@@ -20,10 +19,16 @@ export class AuthPresenter {
       const result = await this.model.login(email, password);
 
       console.log("Login successful:", result);
-
       this.view.showSuccess("Login berhasil!");
-
       this.updateAuthState(true);
+
+      try {
+        if (window.app) {
+          await window.app.initPushNotification();
+        }
+      } catch (pushError) {
+        console.error("Push notification setup failed:", pushError);
+      }
 
       setTimeout(() => {
         this.router.navigateTo("home");
@@ -40,7 +45,6 @@ export class AuthPresenter {
       const result = await this.model.register(name, email, password);
 
       console.log("Register successful:", result);
-
       this.view.showSuccess("Registrasi berhasil! Silakan login.");
 
       setTimeout(() => {
@@ -53,11 +57,10 @@ export class AuthPresenter {
     }
   }
 
-  handleLogout() {
+  async handleLogout() {
     try {
-      // Unsubscribe dari notifications sebelum logout
       if (window.app) {
-        window.app.unsubscribeFromNotifications();
+        await window.app.unsubscribeFromNotifications();
       }
 
       this.model.logout();
